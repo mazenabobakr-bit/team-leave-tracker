@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Team Leave Tracker</title>
+<style>
+  :root{
+    --bg:#f5f6fa;
+    --card:#ffffff;
+    --text:#1e2330;
+    --muted:#6b7280;
+    --border:#e5e7eb;
+    --primary:#4f46e5;
+    --primary-hover:#4338ca;
+    --green:#16a34a;
+    --red:#dc2626;
+    --shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#12141c;
+      --card:#1b1e2a;
+      --text:#e7e9ee;
+      --muted:#9aa1af;
+      --border:#2a2e3c;
+      --primary:#818cf8;
+      --primary-hover:#6366f1;
+      --green:#22c55e;
+      --red:#f87171;
+      --shadow: 0 1px 3px rgba(0,0,0,0.4);
+    }
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:"Segoe UI", Tahoma, Arial, sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    font-size:14px;
+  }
+  .app{
+    max-width:720px;
+    margin:0 auto;
+    padding:24px 16px 60px;
+  }
+  h1{
+    font-size:22px;
+    margin:0 0 20px 0;
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .card{
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:18px;
+    margin-bottom:18px;
+    box-shadow:var(--shadow);
+  }
+  .card h2{
+    font-size:15px;
+    margin:0 0 12px 0;
+    color:var(--muted);
+    display:flex;
+    align-items:center;
+    gap:6px;
+  }
+  .person-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:10px 0;
+    border-bottom:1px solid var(--border);
+  }
+  .person-row:last-child{border-bottom:none;}
+  .person-info{display:flex; align-items:center; gap:10px;}
+  .dot{
+    width:12px; height:12px; border-radius:50%;
+    display:inline-block;
+    flex-shrink:0;
+  }
+  .dot.green{background:var(--green); box-shadow:0 0 6px var(--green);}
+  .dot.red{background:var(--red); box-shadow:0 0 6px var(--red);}
+  .name{font-weight:600; font-size:14px;}
+  .country{color:var(--muted); font-size:12px;}
+  .clock{
+    font-variant-numeric: tabular-nums;
+    font-weight:700;
+    font-size:16px;
+  }
+  .status-text{
+    font-size:12px;
+    color:var(--muted);
+  }
+  .holidays-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));
+    gap:14px;
+  }
+  .holiday-country-title{
+    font-weight:700;
+    font-size:13px;
+    margin-bottom:6px;
+    color:var(--primary);
+  }
+  .holiday-item{
+    display:flex;
+    justify-content:space-between;
+    padding:4px 0;
+    font-size:13px;
+    border-bottom:1px dashed var(--border);
+  }
+  .holiday-item:last-child{border-bottom:none;}
+  .holiday-date{color:var(--muted);}
+  form.add-leave{
+    display:grid;
+    grid-template-columns:1.1fr 1.3fr 0.8fr 1fr auto;
+    gap:8px;
+    align-items:end;
+  }
+  .date-range{
+    display:flex;
+    gap:8px;
+  }
+  .date-range label{
+    display:flex;
+    flex-direction:column;
+    gap:3px;
+    font-size:11px;
+    color:var(--muted);
+    flex:1;
+  }
+  @media (max-width:600px){
+    form.add-leave{grid-template-columns:1fr;}
+    .date-range{flex-direction:column;}
+  }
+  select, input[type="date"], input[type="text"]{
+    padding:9px 10px;
+    border-radius:8px;
+    border:1px solid var(--border);
+    background:var(--bg);
+    color:var(--text);
+    font-family:inherit;
+    font-size:13px;
+    width:100%;
+  }
+  button{
+    cursor:pointer;
+    border:none;
+    border-radius:8px;
+    padding:9px 14px;
+    font-size:13px;
+    font-weight:600;
+    font-family:inherit;
+  }
+  .btn-primary{
+    background:var(--primary);
+    color:#fff;
+  }
+  .btn-primary:hover{background:var(--primary-hover);}
+  .leave-list-item{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:8px 0;
+    border-bottom:1px solid var(--border);
+    font-size:13px;
+  }
+  .leave-list-item:last-child{border-bottom:none;}
+  .leave-actions button{
+    padding:4px 9px;
+    font-size:12px;
+    margin-inline-start:6px;
+  }
+  .btn-edit{background:#eab30822; color:#b45309;}
+  .btn-delete{background:#dc262622; color:var(--red);}
+  .btn-delete:hover{background:var(--red); color:#fff;}
+  .empty{color:var(--muted); font-size:13px; text-align:center; padding:8px 0;}
+  .loading{color:var(--muted); font-size:13px;}
+  .footer-hint{
+    font-size:11px;
+    color:var(--muted);
+    text-align:center;
+    margin-top:8px;
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>🌍 Team Leave Tracker</h1>
+
+  <!-- Live clocks + leave indicator -->
+  <div class="card">
+    <h2>🕒 Current Time & Team Status</h2>
+    <div id="team-list"></div>
+  </div>
+
+  <!-- Result: upcoming public holidays -->
+  <div class="card">
+    <h2>📅 Result - Upcoming Public Holidays</h2>
+    <div id="official-holidays" class="loading">Loading...</div>
+  </div>
+
+  <!-- Add annual/personal leave -->
+  <div class="card">
+    <h2>➕ Add Annual / Personal Leave</h2>
+    <form class="add-leave" id="leave-form">
+      <select id="leave-person" required></select>
+      <div class="date-range">
+        <label>From
+          <input type="date" id="leave-date-from" required>
+        </label>
+        <label>To
+          <input type="date" id="leave-date-to" required>
+        </label>
+      </div>
+      <select id="leave-type">
+        <option value="annual">Annual</option>
+        <option value="personal">Personal</option>
+        <option value="other">Other</option>
+      </select>
+      <input type="text" id="leave-note" placeholder="Note (optional)">
+      <button type="submit" class="btn-primary" id="leave-submit-btn">Add</button>
+    </form>
+  </div>
+
+  <!-- Registered annual leaves list -->
+  <div class="card">
+    <h2>📝 Registered Annual Leaves</h2>
+    <div id="annual-leaves-list"></div>
+  </div>
+
+  <div class="footer-hint">Data is synced live for everyone via a shared cloud database — any update shows up on all devices instantly.</div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+// ============================================================
+// Firebase setup
+// ============================================================
+const firebaseConfig = {
+  apiKey: "AIzaSyAwL1ow_GYBDghq8JcVPMXUoaI7CMD4r2w",
+  authDomain: "team-leave-tracker-cfaa1.firebaseapp.com",
+  projectId: "team-leave-tracker-cfaa1",
+  storageBucket: "team-leave-tracker-cfaa1.firebasestorage.app",
+  messagingSenderId: "132190392633",
+  appId: "1:132190392633:web:c9d834239c335a717718e8"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const leavesCollection = db.collection("annualLeaves");
+
+const TEAM = [
+  { id: "me",         name: "Mazen",     country: "Egypt",      code: "EG", tz: "Africa/Cairo" },
+  { id: "manager",    name: "Kristina",  country: "Colombia",   code: "CO", tz: "America/Bogota" },
+  { id: "colleague1", name: "Aman",      country: "Kazakhstan", code: "KZ", tz: "Asia/Almaty" },
+  { id: "colleague2", name: "Nadya",     country: "Kazakhstan", code: "KZ", tz: "Asia/Almaty" },
+];
+// Add/remove members by copying or deleting a line above.
+
+const COUNTRY_NAMES = { EG: "Egypt", CO: "Colombia", KZ: "Kazakhstan" };
+const COUNTRY_CODES = [...new Set(TEAM.map(p => p.code))];
+
+const LEAVE_TYPE_LABELS = {
+  annual: "Annual Leave",
+  personal: "Personal Leave",
+  other: "Leave"
+};
+
+let officialHolidaysByCountry = {};
+let upcomingHolidaysByCountry = {};
+let annualLeaves = [];
+let editingLeaveId = null;
+
+function todayISO() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function formatDateEn(iso) {
+  const d = new Date(iso + "T00:00:00");
+  return d.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+}
+
+async function fetchOfficialHolidays() {
+  const year = new Date().getFullYear();
+  for (const code of COUNTRY_CODES) {
+    try {
+      const [allRes, nextRes] = await Promise.all([
+        fetch(`https://date.nager.at/api/v3/PublicHolidays/${year}/${code}`),
+        fetch(`https://date.nager.at/api/v3/NextPublicHolidays/${code}`)
+      ]);
+      officialHolidaysByCountry[code] = allRes.ok ? await allRes.json() : [];
+      upcomingHolidaysByCountry[code] = nextRes.ok ? await nextRes.json() : [];
+    } catch (err) {
+      console.error("Error fetching holidays for", code, err);
+      officialHolidaysByCountry[code] = [];
+      upcomingHolidaysByCountry[code] = [];
+    }
+  }
+}
+
+function isOfficialHolidayToday(code) {
+  const list = officialHolidaysByCountry[code] || [];
+  const today = todayISO();
+  return list.find(h => h.date === today) || null;
+}
+
+function listenToAnnualLeaves() {
+  leavesCollection.onSnapshot(
+    (snapshot) => {
+      annualLeaves = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      renderAll();
+    },
+    (err) => {
+      console.error("Firestore listen error", err);
+    }
+  );
+}
+
+function getAnnualLeaveToday(personId) {
+  const today = todayISO();
+  return annualLeaves.find(l => l.personId === personId && today >= l.dateFrom && today <= l.dateTo) || null;
+}
+
+function renderTeam() {
+  const container = document.getElementById("team-list");
+  container.innerHTML = "";
+
+  TEAM.forEach(person => {
+    const officialLeave = isOfficialHolidayToday(person.code);
+    const annualLeave = getAnnualLeaveToday(person.id);
+    const onLeave = Boolean(officialLeave || annualLeave);
+
+    let reason = "Regular working day";
+    if (officialLeave) reason = `Public holiday: ${officialLeave.name}`;
+    else if (annualLeave) {
+      const typeLabel = LEAVE_TYPE_LABELS[annualLeave.type] || "Leave";
+      reason = `${typeLabel}${annualLeave.note ? " — " + annualLeave.note : ""}`;
+    }
+
+    const row = document.createElement("div");
+    row.className = "person-row";
+    row.innerHTML = `
+      <div class="person-info">
+        <span class="dot ${onLeave ? "red" : "green"}"></span>
+        <div>
+          <div class="name">${person.name}</div>
+          <div class="country">${person.country} · <span class="status-text">${reason}</span></div>
+        </div>
+      </div>
+      <div class="clock" data-tz="${person.tz}">--:--:--</div>
+    `;
+    container.appendChild(row);
+  });
+
+  tickClocks();
+}
+
+function tickClocks() {
+  document.querySelectorAll(".clock").forEach(el => {
+    const tz = el.dataset.tz;
+    const now = new Date();
+    el.textContent = now.toLocaleTimeString("en-US", { timeZone: tz, hour12: true });
+  });
+}
+
+function renderOfficialHolidays() {
+  const container = document.getElementById("official-holidays");
+  container.innerHTML = "";
+  const grid = document.createElement("div");
+  grid.className = "holidays-grid";
+
+  COUNTRY_CODES.forEach(code => {
+    const upcoming = (upcomingHolidaysByCountry[code] || []).slice(0, 5);
+    const block = document.createElement("div");
+
+    let itemsHtml = upcoming.length === 0
+      ? `<div class="empty">No upcoming holidays found</div>`
+      : upcoming.map(h => `
+          <div class="holiday-item">
+            <span>${h.name}</span>
+            <span class="holiday-date">${h.date}</span>
+          </div>
+        `).join("");
+
+    block.innerHTML = `
+      <div class="holiday-country-title">${COUNTRY_NAMES[code] || code}</div>
+      ${itemsHtml}
+    `;
+    grid.appendChild(block);
+  });
+
+  container.appendChild(grid);
+}
+
+function renderPersonOptions() {
+  const select = document.getElementById("leave-person");
+  select.innerHTML = TEAM.map(p => `<option value="${p.id}">${p.name} (${p.country})</option>`).join("");
+}
+
+function renderAnnualLeavesList() {
+  const container = document.getElementById("annual-leaves-list");
+  container.innerHTML = "";
+
+  if (annualLeaves.length === 0) {
+    container.innerHTML = `<div class="empty">No leaves registered yet</div>`;
+    return;
+  }
+
+  const sorted = [...annualLeaves].sort((a, b) => a.dateFrom.localeCompare(b.dateFrom));
+
+  sorted.forEach(leave => {
+    const row = document.createElement("div");
+    row.className = "leave-list-item";
+    const rangeText = leave.dateFrom === leave.dateTo
+      ? formatDateEn(leave.dateFrom)
+      : `${formatDateEn(leave.dateFrom)} → ${formatDateEn(leave.dateTo)}`;
+    const typeLabel = LEAVE_TYPE_LABELS[leave.type] || "Leave";
+    row.innerHTML = `
+      <div>
+        <strong>${leave.personName}</strong> — ${rangeText}
+        <div class="country">${typeLabel}${leave.note ? " · " + leave.note : ""}</div>
+      </div>
+      <div class="leave-actions">
+        <button class="btn-edit" data-id="${leave.id}">Edit</button>
+        <button class="btn-delete" data-id="${leave.id}">Delete</button>
+      </div>
+    `;
+    container.appendChild(row);
+  });
+
+  container.querySelectorAll(".btn-delete").forEach(btn => {
+    btn.addEventListener("click", () => deleteLeave(btn.dataset.id));
+  });
+  container.querySelectorAll(".btn-edit").forEach(btn => {
+    btn.addEventListener("click", () => startEditLeave(btn.dataset.id));
+  });
+}
+
+async function handleLeaveFormSubmit(e) {
+  e.preventDefault();
+  const personId = document.getElementById("leave-person").value;
+  const dateFrom = document.getElementById("leave-date-from").value;
+  const dateTo = document.getElementById("leave-date-to").value;
+  const type = document.getElementById("leave-type").value;
+  const note = document.getElementById("leave-note").value.trim();
+  const person = TEAM.find(p => p.id === personId);
+  if (!person || !dateFrom || !dateTo) return;
+
+  if (dateTo < dateFrom) {
+    alert("End date must be the same as or after the start date");
+    return;
+  }
+
+  const submitBtn = document.getElementById("leave-submit-btn");
+  submitBtn.disabled = true;
+
+  try {
+    if (editingLeaveId) {
+      await leavesCollection.doc(editingLeaveId).update({
+        personId,
+        personName: person.name,
+        dateFrom,
+        dateTo,
+        type,
+        note
+      });
+      editingLeaveId = null;
+      submitBtn.textContent = "Add";
+    } else {
+      await leavesCollection.add({
+        personId,
+        personName: person.name,
+        dateFrom,
+        dateTo,
+        type,
+        note
+      });
+    }
+    document.getElementById("leave-form").reset();
+  } catch (err) {
+    console.error("Error saving leave", err);
+    alert("Could not save. Please check your internet connection and try again.");
+  } finally {
+    submitBtn.disabled = false;
+  }
+}
+
+function startEditLeave(id) {
+  const leave = annualLeaves.find(l => l.id === id);
+  if (!leave) return;
+  editingLeaveId = id;
+  document.getElementById("leave-person").value = leave.personId;
+  document.getElementById("leave-date-from").value = leave.dateFrom;
+  document.getElementById("leave-date-to").value = leave.dateTo;
+  document.getElementById("leave-type").value = leave.type || "annual";
+  document.getElementById("leave-note").value = leave.note || "";
+  document.getElementById("leave-submit-btn").textContent = "Save Changes";
+}
+
+async function deleteLeave(id) {
+  if (editingLeaveId === id) {
+    editingLeaveId = null;
+    document.getElementById("leave-form").reset();
+    document.getElementById("leave-submit-btn").textContent = "Add";
+  }
+  try {
+    await leavesCollection.doc(id).delete();
+  } catch (err) {
+    console.error("Error deleting leave", err);
+    alert("Could not delete. Please check your internet connection and try again.");
+  }
+}
+
+function renderAll() {
+  renderTeam();
+  renderOfficialHolidays();
+  renderAnnualLeavesList();
+}
+
+async function init() {
+  renderPersonOptions();
+  document.getElementById("leave-form").addEventListener("submit", handleLeaveFormSubmit);
+
+  listenToAnnualLeaves();
+  renderAll();
+
+  await fetchOfficialHolidays();
+  renderAll();
+
+  setInterval(tickClocks, 1000);
+}
+
+init();
+</script>
+</body>
+</html>
