@@ -218,8 +218,8 @@
       </div>
       <select id="leave-type">
         <option value="annual">Annual</option>
-        <option value="personal">Personal</option>
-        <option value="other">Other</option>
+        <option value="sick">Sick</option>
+        <option value="emergency">Emergency Leave</option>
       </select>
       <input type="text" id="leave-note" placeholder="Note (optional)">
       <button type="submit" class="btn-primary" id="leave-submit-btn">Add</button>
@@ -266,8 +266,8 @@ const COUNTRY_CODES = [...new Set(TEAM.map(p => p.code))];
 
 const LEAVE_TYPE_LABELS = {
   annual: "Annual Leave",
-  personal: "Personal Leave",
-  other: "Leave"
+  sick: "Sick Leave",
+  emergency: "Emergency Leave"
 };
 
 let officialHolidaysByCountry = {};
