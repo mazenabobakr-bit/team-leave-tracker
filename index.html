@@ -185,10 +185,60 @@
     text-align:center;
     margin-top:8px;
   }
+  .footer-hint a{ color:var(--primary); }
+  .login-screen{
+    position:fixed;
+    inset:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:var(--bg);
+    z-index:100;
+    padding:20px;
+  }
+  .login-card{
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:32px 28px;
+    max-width:360px;
+    width:100%;
+    text-align:center;
+    box-shadow:var(--shadow);
+  }
+  .login-card h2{
+    margin:0 0 10px 0;
+    font-size:18px;
+  }
+  .login-card p{
+    color:var(--muted);
+    font-size:13px;
+    margin:0 0 18px 0;
+  }
+  .login-card .btn-primary{
+    width:100%;
+    padding:11px;
+    font-size:14px;
+  }
+  .login-error{
+    color:var(--red);
+    font-size:12px;
+    margin-top:12px;
+    display:none;
+  }
 </style>
 </head>
 <body>
-<div class="app">
+<div id="login-screen" class="login-screen">
+  <div class="login-card">
+    <h2>🔒 Team Leave Tracker</h2>
+    <p>Sign in with your work Google account to continue.</p>
+    <button id="google-signin-btn" class="btn-primary">Sign in with Google</button>
+    <div id="login-error" class="login-error"></div>
+  </div>
+</div>
+
+<div class="app" id="app-content" style="display:none;">
   <h1>🌍 Team Leave Tracker</h1>
 
   <!-- Live clocks + leave indicator -->
@@ -233,9 +283,14 @@
   </div>
 
   <div class="footer-hint">Data is synced live for everyone via a shared cloud database — any update shows up on all devices instantly.</div>
+  <div class="footer-hint" style="margin-top:6px;">
+    Signed in as <strong id="current-user-email"></strong> ·
+    <a href="#" id="sign-out-link">Sign out</a>
+  </div>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script>
 // ============================================================
@@ -250,8 +305,18 @@ const firebaseConfig = {
   appId: "1:132190392633:web:c9d834239c335a717718e8"
 };
 firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
 const db = firebase.firestore();
 const leavesCollection = db.collection("annualLeaves");
+
+const ALLOWED_EMAILS = [
+  "romanov.aman@indriver.com",
+  "nadezhda.tomskaya@indriver.com",
+  "mazen.abo.bakr@indriver.com",
+  "k.kaz@indriver.com"
+];
+const googleProvider = new firebase.auth.GoogleAuthProvider();
+let appStarted = false;
 
 const TEAM = [
   { id: "me",         name: "Mazen",     country: "Egypt",      code: "EG", tz: "Africa/Cairo" },
@@ -538,7 +603,55 @@ async function init() {
   setInterval(tickClocks, 1000);
 }
 
-init();
+// ============================================================
+// Authentication gate
+// ============================================================
+function showLoginError(msg) {
+  const el = document.getElementById("login-error");
+  el.textContent = msg;
+  el.style.display = msg ? "block" : "none";
+}
+
+document.getElementById("google-signin-btn").addEventListener("click", () => {
+  showLoginError("");
+  auth.signInWithPopup(googleProvider).catch((err) => {
+    console.error("Sign-in error", err);
+    showLoginError("Sign-in failed. Please try again.");
+  });
+});
+
+document.getElementById("sign-out-link").addEventListener("click", (e) => {
+  e.preventDefault();
+  auth.signOut();
+});
+
+auth.onAuthStateChanged((user) => {
+  const loginScreen = document.getElementById("login-screen");
+  const appContent = document.getElementById("app-content");
+
+  if (user) {
+    const email = (user.email || "").toLowerCase();
+    const isAllowed = ALLOWED_EMAILS.map(e => e.toLowerCase()).includes(email);
+
+    if (isAllowed) {
+      loginScreen.style.display = "none";
+      appContent.style.display = "block";
+      document.getElementById("current-user-email").textContent = user.email;
+      if (!appStarted) {
+        appStarted = true;
+        init();
+      }
+    } else {
+      appContent.style.display = "none";
+      loginScreen.style.display = "flex";
+      showLoginError("This Google account (" + user.email + ") is not authorized to access this tool.");
+      auth.signOut();
+    }
+  } else {
+    appContent.style.display = "none";
+    loginScreen.style.display = "flex";
+  }
+});
 </script>
 </body>
 </html>
