@@ -59,6 +59,17 @@
     margin-bottom:26px;
     box-shadow:var(--shadow);
   }
+  .top-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:26px;
+    align-items:start;
+    margin-bottom:26px;
+  }
+  @media (max-width:900px){
+    .top-grid{grid-template-columns:1fr;}
+  }
+  .top-grid .card{ margin-bottom:0; height:100%; }
   .card h2{
     font-size:15px;
     margin:0 0 16px 0;
@@ -258,16 +269,18 @@
 <div class="app" id="app-content" style="display:none;">
   <h1>🌍 Team Leave Tracker</h1>
 
-  <!-- Live clocks + leave indicator -->
-  <div class="card">
-    <h2>🕒 Current Time & Team Status</h2>
-    <div id="team-list"></div>
-  </div>
+  <div class="top-grid">
+    <!-- Live clocks + leave indicator -->
+    <div class="card">
+      <h2>🕒 Current Time & Team Status</h2>
+      <div id="team-list"></div>
+    </div>
 
-  <!-- Result: upcoming public holidays -->
-  <div class="card">
-    <h2>📅 Result - Upcoming Public Holidays</h2>
-    <div id="official-holidays" class="loading">Loading...</div>
+    <!-- Result: upcoming public holidays -->
+    <div class="card">
+      <h2>📅 Result - Upcoming Public Holidays</h2>
+      <div id="official-holidays" class="loading">Loading...</div>
+    </div>
   </div>
 
   <!-- Add annual/personal leave -->
@@ -338,6 +351,20 @@ const ALLOWED_EMAILS = [
 ];
 const googleProvider = new firebase.auth.GoogleAuthProvider();
 let appStarted = false;
+
+const SESSION_DURATION_MS = 2 * 60 * 60 * 1000; // 2 hours
+const SESSION_STORAGE_KEY = "leaveTrackerSignInTime";
+let autoLogoutTimer = null;
+
+function scheduleAutoLogout(signInTime) {
+  if (autoLogoutTimer) clearTimeout(autoLogoutTimer);
+  const remaining = SESSION_DURATION_MS - (Date.now() - signInTime);
+  if (remaining <= 0) {
+    auth.signOut();
+    return;
+  }
+  autoLogoutTimer = setTimeout(() => auth.signOut(), remaining);
+}
 
 const TEAM = [
   { id: "me",         name: "Mazen",     country: "Egypt",      code: "EG", tz: "Africa/Cairo" },
@@ -685,6 +712,18 @@ auth.onAuthStateChanged((user) => {
     const isAllowed = ALLOWED_EMAILS.map(e => e.toLowerCase()).includes(email);
 
     if (isAllowed) {
+      let signInTime = Number(localStorage.getItem(SESSION_STORAGE_KEY));
+      if (!signInTime) {
+        signInTime = Date.now();
+        localStorage.setItem(SESSION_STORAGE_KEY, String(signInTime));
+      }
+      if (Date.now() - signInTime > SESSION_DURATION_MS) {
+        localStorage.removeItem(SESSION_STORAGE_KEY);
+        auth.signOut();
+        return;
+      }
+      scheduleAutoLogout(signInTime);
+
       loginScreen.style.display = "none";
       appContent.style.display = "block";
       document.getElementById("current-user-email").textContent = user.email;
@@ -699,6 +738,8 @@ auth.onAuthStateChanged((user) => {
       auth.signOut();
     }
   } else {
+    if (autoLogoutTimer) clearTimeout(autoLogoutTimer);
+    localStorage.removeItem(SESSION_STORAGE_KEY);
     appContent.style.display = "none";
     loginScreen.style.display = "flex";
   }
