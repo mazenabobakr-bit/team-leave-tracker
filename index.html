@@ -40,9 +40,9 @@
     font-size:14px;
   }
   .app{
-    max-width:720px;
+    max-width:1140px;
     margin:0 auto;
-    padding:24px 16px 60px;
+    padding:36px 32px 80px;
   }
   h1{
     font-size:22px;
@@ -55,14 +55,20 @@
     background:var(--card);
     border:1px solid var(--border);
     border-radius:12px;
-    padding:18px;
-    margin-bottom:18px;
+    padding:28px;
+    margin-bottom:26px;
     box-shadow:var(--shadow);
   }
   .card h2{
     font-size:15px;
-    margin:0 0 12px 0;
+    margin:0 0 16px 0;
     color:var(--muted);
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:6px;
+  }
+  .card h2 .h2-title{
     display:flex;
     align-items:center;
     gap:6px;
@@ -71,7 +77,7 @@
     display:flex;
     align-items:center;
     justify-content:space-between;
-    padding:10px 0;
+    padding:14px 0;
     border-bottom:1px solid var(--border);
   }
   .person-row:last-child{border-bottom:none;}
@@ -116,26 +122,37 @@
   .holiday-date{color:var(--muted);}
   form.add-leave{
     display:grid;
-    grid-template-columns:1.1fr 1.3fr 0.8fr 1fr auto;
-    gap:8px;
+    grid-template-columns:1.2fr 1.4fr 0.9fr 1.2fr auto;
+    gap:12px;
     align-items:end;
   }
   .date-range{
     display:flex;
-    gap:8px;
+    gap:10px;
   }
   .date-range label{
     display:flex;
     flex-direction:column;
-    gap:3px;
+    gap:5px;
     font-size:11px;
     color:var(--muted);
     flex:1;
   }
-  @media (max-width:600px){
-    form.add-leave{grid-template-columns:1fr;}
-    .date-range{flex-direction:column;}
+  @media (max-width:700px){
+    form.add-leave{grid-template-columns:1fr 1fr;}
+    .date-range{flex-direction:column; grid-column:1 / -1;}
   }
+  @media (max-width:480px){
+    form.add-leave{grid-template-columns:1fr;}
+  }
+  .btn-secondary{
+    background:transparent;
+    color:var(--primary);
+    border:1px solid var(--primary);
+    font-size:12px;
+    padding:6px 12px;
+  }
+  .btn-secondary:hover{background:var(--primary); color:#fff;}
   select, input[type="date"], input[type="text"]{
     padding:9px 10px;
     border-radius:8px;
@@ -164,7 +181,7 @@
     display:flex;
     justify-content:space-between;
     align-items:center;
-    padding:8px 0;
+    padding:12px 0;
     border-bottom:1px solid var(--border);
     font-size:13px;
   }
@@ -278,7 +295,10 @@
 
   <!-- Registered annual leaves list -->
   <div class="card">
-    <h2>📝 Registered Annual Leaves</h2>
+    <h2>
+      <span class="h2-title">📝 Registered Annual Leaves</span>
+      <button id="export-excel-btn" class="btn-secondary" type="button">Export to Excel</button>
+    </h2>
     <div id="annual-leaves-list"></div>
   </div>
 
@@ -289,6 +309,7 @@
   </div>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
@@ -583,6 +604,36 @@ async function deleteLeave(id) {
     alert("Could not delete. Please check your internet connection and try again.");
   }
 }
+
+function exportToExcel() {
+  if (annualLeaves.length === 0) {
+    alert("No leaves to export yet.");
+    return;
+  }
+
+  const sorted = [...annualLeaves].sort((a, b) => a.dateFrom.localeCompare(b.dateFrom));
+
+  const rows = sorted.map(leave => ({
+    "Name": leave.personName,
+    "Type": LEAVE_TYPE_LABELS[leave.type] || "Leave",
+    "From": leave.dateFrom,
+    "To": leave.dateTo,
+    "Note": leave.note || ""
+  }));
+
+  const worksheet = XLSX.utils.json_to_sheet(rows);
+  worksheet["!cols"] = [
+    { wch: 16 }, { wch: 16 }, { wch: 12 }, { wch: 12 }, { wch: 30 }
+  ];
+
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Annual Leaves");
+
+  const today = todayISO();
+  XLSX.writeFile(workbook, `team-leaves-${today}.xlsx`);
+}
+
+document.getElementById("export-excel-btn").addEventListener("click", exportToExcel);
 
 function renderAll() {
   renderTeam();
